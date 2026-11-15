@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNIK Nursing Simulator - Video Game</title>
+<style>
+body{font-family:Arial;background:#0f2027;color:white;padding:10px;text-align:center;margin:0}
+.card{background:white;color:black;padding:15px;border-radius:15px;max-width:620px;margin:auto;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+.ward{background:linear-gradient(#87CEEB,#e3f2fd);height:260px;border-radius:12px;position:relative;overflow:hidden;border:4px solid #1565c0}
+#patient{font-size:65px;position:absolute;left:10px;top:110px;transition:all 1s;z-index:2}
+#bed{font-size:80px;position:absolute;right:20px;top:100px}
+#ambulance{font-size:50px;position:absolute;left:-80px;top:10px;transition:all 2s}
+#monitor{position:absolute;right:10px;top:10px;background:black;color:#00ff00;padding:5px 10px;border-radius:8px;font-size:12px}
+#timerBar{height:12px;background:#ddd;border-radius:10px;overflow:hidden;margin:8px 0}
+#timerFill{height:100%;background:#ff9800;width:100%}
+button{padding:11px;margin:5px;border:none;border-radius:10px;background:#1565c0;color:white;font-size:14px;cursor:pointer}
+button:disabled{background:#ccc}
+.green{background:#2e7d32}.red{background:#c62828}.orange{background:#ef6c00}
+#log{background:#f1f1f1;padding:10px;border-radius:8px;text-align:left;height:110px;overflow:auto;font-size:13px}
+input{padding:10px;width:80%;border-radius:8px;border:1px solid #ccc;font-size:16px}
+.levelBtn{width:95%;text-align:left}
+#leader{ background:#fffde7;padding:10px;border-radius:8px;margin-top:10px;text-align:left}
+</style>
+</head>
+<body>
+<h1>🩺 UNIK NURSING SIMULATOR</h1>
+<p>Video Game For University Nursing Students | From Non-Severe to Severe</p>
+<div class="card">
+<!-- START SCREEN -->
+<div id="startScreen">
+<h2>👋 Welcome to UNIK Hospital</h2>
+<p>Enter your name to start your shift as a Nurse:</p>
+<input id="playerName" placeholder="Type your full name e.g. Sarah Nakato">
+<br><br><button class="green" onclick="startGame()">▶️ START SHIFT - PLAY GAME</button>
+<p style="font-size:12px">Your score will be saved on Leaderboard. Share with all Nursing Schools!</p>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen" style="display:none">
+<p><b>👩‍⚕️ Nurse:</b> <span id="showName"></span> | <b>Coins:</b> <span id="coins">0</span> | <b>Rank:</b> <span id="rank">Student Nurse</span> | <b>⏰ Time:</b> <span id="timeLeft">60</span>s</p>
+<div id="timerBar"><div id="timerFill"></div></div>
+<div id="status" style="background:#fff3cd;padding:8px;border-radius:8px;font-weight:bold">Choose a Level below to start</div>
+<div class="ward" id="wardBg">
+<div id="ambulance">🚑</div>
+<div id="monitor">❤️ 72 | SpO2 98%</div>
+<div id="patient">🏥</div><div id="bed">🛏️</div>
+</div>
+<p><b>Case:</b> <span id="caseText">Choose a level.</span></p>
+<div id="actions"></div>
+<div id="log">📝 Nurse Log: Shift started...</div>
+<h3>🏥 WARDS - LEVELS (Finish 1 to Unlock Next)</h3>
+<div id="levels"></div>
+<div id="leader"><h3>🏆 LEADERBOARD - Top UNIK Nurses</h3><div id="leaderList">No scores yet. Be the first!</div><button onclick="clearLeader()">Clear Leaderboard</button></div>
+</div>
+</div>
+<script>
+let coins=0, unlocked=1, currentLevel=0, timerInt=null, timeLeft=60, player="";
+let levels=[
+{ward:"LEVEL 1 - TRIAGE / OPD - Non Severe",emoji:"🩺",bg:"linear-gradient(#a5d6a7,#e8f5e9)",story:"3 patients: A) Child mild cough, B) Man chest pain, C) Woman small cut. Who FIRST?",options:["A - Child cough","B - Man chest pain - RED URGENT","C - Woman cut"],correct:1,explain:"Triage: Chest pain = RED, most urgent.",time:60},
+{ward:"LEVEL 2 - MEDICAL WARD",emoji:"💊",bg:"linear-gradient(#bbdefb,#e3f2fd)",story:"Fever 39.5°C, Malaria suspected. Manage: Move to bed, Raise head, Vitals, Give correct drug.",options:["Move + Manage correctly","Give wrong drug","Send home"],correct:0,explain:"Medical: Bed, position, vitals, correct medication.",time:60},
+{ward:"LEVEL 3 - CHILDREN'S WARD",emoji:"👶",bg:"linear-gradient(#ffccbc,#fff3e0)",story:"2yr child diarrhoea, dehydrated, sunken eyes. FIRST action?",options:["Give ORS + assess dehydration","Give soda","Ignore"],correct:0,explain:"Paediatric: ORS, assess dehydration fast.",time:60},
+{ward:"LEVEL 4 - SURGICAL WARD",emoji:"🩹",bg:"linear-gradient(#c8e6c9,#f1f8e9)",story:"Post-op wound red, pus, pain. What to do?",options:["Aseptic wound care + report","Dirty cloth","Leave it"],correct:0,explain:"Surgical: Aseptic technique, report infection.",time:60},
+{ward:"LEVEL 5 - THEATRE",emoji:"🏥",bg:"linear-gradient(#e1bee7,#f3e5f5)",story:"Patient for surgery. Check BEFORE theatre?",options:["Consent, vitals, fasting, allergy, ID","Just push to theatre","No check"],correct:0,explain:"Theatre safety: Consent, fasting, allergy, ID.",time:60},
+{ward:"LEVEL 6 - LAB / INVESTIGATIONS",emoji:"🔬",bg:"linear-gradient(#b2dfdb,#e0f2f1)",story:"Fever patient needs diagnosis. Which investigation FIRST?",options:["Blood slide malaria + CBC","Do nothing","X-ray leg"],correct:0,explain:"Lab: Investigation guides treatment.",time:60},
+{ward:"LEVEL 7 - EMERGENCY WARD - SEVERE",emoji:"🚑",bg:"linear-gradient(#ffcdd2,#ffebee)",story:"Accident victim bleeding heavily from leg. FIRST? TIME IS LIFE!",options:["Control bleeding + call help","Give water","Take photo"],correct:0,explain:"Emergency: ABC + Control bleeding.",time:30},
+{ward:"LEVEL 8 - HDU",emoji:"📟",bg:"linear-gradient(#ffe0b2,#fff3e0)",story:"Patient SpO2 88%, breathing difficulty. What to do?",options:["Raise head, oxygen, monitor, call doctor","Lay flat","Remove oxygen"],correct:0,explain:"HDU: Oxygen, position, close monitoring.",time:40},
+{ward:"LEVEL 9 - ICU - MOST SEVERE",emoji:"⚠️",bg:"linear-gradient(#ff8a65,#ffccbc)",story:"ICU unconscious, ventilator, BP dropping. Priority? HURRY!",options:["ABC, monitor, notify doctor STAT","Leave patient","Give food"],correct:0,explain:"ICU: ABC, continuous monitoring, STAT.",time:25},
+{ward:"LEVEL 10 - MENTAL WARD",emoji:"🧠",bg:"linear-gradient(#d1c4e9,#ede7f6)",story:"Patient anxious, aggressive, wants self-harm. FIRST?",options:["Safety, calm talk, don't leave alone, call team","Argue","Lock and leave"],correct:0,explain:"Mental: Safety, therapeutic communication.",time:60}
+];
+function startGame(){
+player=document.getElementById("playerName").value.trim();
+if(!player){alert("Please type your name first, Nurse!");return;}
+document.getElementById("startScreen").style.display="none";
+document.getElementById("gameScreen").style.display="block";
+document.getElementById("showName").innerText=player;
+document.getElementById("log").innerHTML+=" <br>• Welcome Nurse "+player+" - Shift started";
+renderLevels(); loadLeader();
+}
+function renderLevels(){
+let div=document.getElementById("levels");div.innerHTML="";
+levels.forEach((l,i)=>{
+let b=document.createElement("button");b.className="levelBtn";b.innerText=(i+1<=unlocked?"✅ ":"🔒 ")+l.ward;
+if(i+1>unlocked){b.disabled=true;b.style.background="#9e9e9e";}
+b.onclick=()=>startLevel(i);div.appendChild(b);
+});
+}
+function startLevel(i){
+currentLevel=i;let l=levels[i];
+clearInterval(timerInt);timeLeft=l.time;document.getElementById("timeLeft").innerText=timeLeft;
+document.getElementById("wardBg").style.background=l.bg;
+document.getElementById("patient").innerHTML=l.emoji;document.getElementById("patient").style.left="10px";
+document.getElementById("ambulance").style.left="-80px";
+if(i===6||i===8){setTimeout(()=>{document.getElementById("ambulance").style.left="200px";},300);}
+document.getElementById("caseText").innerText=l.title||l.story;
+document.getElementById("status").innerText="NOW PLAYING: "+l.ward+" - Manage patient! ⏰ "+l.time+" sec";
+document.getElementById("log").innerHTML+=" <br>• Started "+l.ward;
+let act=document.getElementById("actions");act.innerHTML="";
+l.options.forEach((opt,idx)=>{let b=document.createElement("button");b.innerText=opt;b.onclick=()=>answer(idx);act.appendChild(b);});
+let controls=[["🛏️ Move Patient To Bed",()=>{document.getElementById("patient").style.left="200px";document.getElementById("patient").innerHTML="🛌";logA("Patient moved to bed");}],["↗️ Raise Head of Bed 45°",()=>logA("Head raised to 45° - Semi-Fowler, breathing better")],["🌡️ Check Vitals",()=>logA("Vitals: Temp, BP, Pulse, Resp, SpO2 documented")],["💊 Review Prescription",()=>logA("Prescription reviewed: Right drug, dose, route, patient, time")],["📋 Take History",()=>logA("History taken: illness, allergy, drugs, past history")]];
+controls.forEach(c=>{let b=document.createElement("button");b.innerText=c[0];b.onclick=c[1];act.appendChild(b);});
+timerInt=setInterval(()=>{
+timeLeft--;document.getElementById("timeLeft").innerText=timeLeft;document.getElementById("timerFill").style.width=(timeLeft/l.time*100)+"%";
+if(timeLeft<=0){clearInterval(timerInt);alert("⏰ TIME UP! Patient deteriorated in "+l.ward+". Try again, Nurse "+player);document.getElementById("log").innerHTML+=" <br>• ⏰ Time up - Patient deteriorated";}
+},1000);
+}
+function logA(t){document.getElementById("log").innerHTML+=" <br>• "+t;}
+function answer(idx){
+let l=levels[currentLevel];
+if(idx===l.correct){
+clearInterval(timerInt);coins+=100;logA("✅ "+l.explain+" +100 Coins");
+if(currentLevel+1===unlocked && unlocked<levels.length){unlocked++;logA("🎉 LEVEL UNLOCKED! Next ward opened!");}
+if(coins>=300) document.getElementById("rank").innerText="Senior Nurse";
+if(coins>=700) document.getElementById("rank").innerText="Matron / Chief Nurse 👑";
+if(currentLevel===levels.length-1){document.getElementById("rank").innerText="CHIEF NURSE - UNIK LEGEND 👑";alert("🎉 YOU FINISHED ALL WARDS! You are CHIEF NURSE!");}
+document.getElementById("coins").innerText=coins;saveLeader();renderLevels();loadLeader();
+}else{logA("❌ Wrong. Try again. "+l.explain);}
+}
+function saveLeader(){
+let list=JSON.parse(localStorage.getItem("unik_leader")||"[]");
+list.push({name:player,coins:coins,date:new Date().toLocaleDateString()});
+list.sort((a,b)=>b.coins-a.coins);list=list.slice(0,5);
+localStorage.setItem("unik_leader",JSON.stringify(list));
+}
+function loadLeader(){
+let list=JSON.parse(localStorage.getItem("unik_leader")||"[]");
+if(!list.length){document.getElementById("leaderList").innerHTML="No scores yet. Be the first!";return;}
+document.getElementById("leaderList").innerHTML=list.map((x,i)=>`${i+1}. ${x.name} - ${x.coins} Coins - ${x.date}`).join("<br>");
+}
+function clearLeader(){localStorage.removeItem("unik_leader");loadLeader();}
+</script>
+</body>
+</html>
